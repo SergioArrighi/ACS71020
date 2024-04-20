@@ -128,11 +128,20 @@ void setup()
   // If the Arduino has built in USB, keep the next line
   // in to wait for the Serial to initialize
 
-  Write(0x1B, 0x11E0F);
+  //Write(0x1B, 0x11E0F); //Default
+  Write(0x1B, 0x211E0F);
+  //            -|--|--------|
+  //Write(0x1B, 0b1000100000111111111110);
+  //Write(0x1B, 0x211E0F);
+  //Write(0x1B, 0x13219);
+  delay(100);
+  Write(0x1C, 0x1F40040);
+  //Write(0x1C, 0b00000000000000000000000001000000);
+  //Write(0x1C, 0b10000000001000000);
   delay(100);
   uint32_t tuning;
-  uint32_t qvo_fine;
-  uint32_t sns_fine;
+  //uint32_t qvo_fine;
+  //uint32_t sns_fine;
   uint32_t crs_sns;
   uint32_t iavgselen;
   uint32_t average;
@@ -153,19 +162,30 @@ void setup()
   uint32_t undervreg;
   uint32_t delaycnt_sel;
   Read(0x1B, tuning);
-  qvo_fine = tuning & 0x1FF;
+  int qvo_fine = tuning & 0x1FF;
+  if (qvo_fine & 0x100) {
+    qvo_fine = -(qvo_fine & 0xFF);  // Convert from two's complement to integer
+  } else {
+    qvo_fine = qvo_fine & 0xFF;
+  }
   Serial.print("qvo_fine: ");
   Serial.println(qvo_fine);
-  sns_fine = (tuning >> 9) & 0x1FF;
+  int sns_fine = (tuning >> 9) & 0x1FF;
+  if (sns_fine & 0x100) {
+    sns_fine = -(sns_fine & 0xFF);  // Convert from two's complement to integer
+  } else {
+    sns_fine = sns_fine & 0xFF;
+  }
   Serial.print("sns_fine: ");
   Serial.println(sns_fine);
-  crs_sns = (tuning >> 18) & 0x1F;
+  crs_sns = (tuning >> 18) & 0b111;
   Serial.print("crs_sns: ");
   Serial.println(crs_sns);
   iavgselen = (tuning >> 21) & 0x1;
   Serial.print("iavgselen: ");
   Serial.println(iavgselen);
-  Read(0x0C, average);
+  Read(0x1C, average);
+  Serial.println(average, HEX);
   rms_avg_1 = average & 0x7F;
   Serial.print("rms_avg_1: ");
   Serial.println(rms_avg_1);
@@ -219,7 +239,7 @@ void loop()
   uint32_t vrms;
   uint32_t irms;
   uint32_t pactive;
-  uint32_t paparent;
+  uint32_t papparent;
   uint32_t pimag;
   uint32_t pfactor;
   uint32_t numptsout;
@@ -237,7 +257,7 @@ void loop()
   uint32_t flags;
   Read(0x20, vrms_irms);
   Read(0x21, pactive);
-  Read(0x22, paparent);
+  Read(0x22, papparent);
   Read(0x23, pimag);
   Read(0x24, pfactor);
   Read(0x25, numptsout);
@@ -250,14 +270,97 @@ void loop()
   Read(0x2C, pinstant);
   Read(0x2D, flags);
   //Serial.println(vrms_irms);
-  std::bitset<32> bits(vrms_irms);
+  //std::bitset<32> bits(vrms_irms);
   //Serial.println(bits.to_string().c_str());
   vrms = vrms_irms & 0x7FFF;
-  Serial.print(">vrms:");
-  Serial.println(vrms);
+  auto v_rms=((float)vrms)/32768;
+  v_rms=v_rms*(432);
+  Serial.print(">v_rms:");
+  Serial.println(v_rms);
+  //Serial.print(">vrms:");
+  //Serial.println(vrms);
+
+  
+  float volts = (float)vrms;
+  
+  volts /= 32768.0; //Convert from codes to the fraction of ADC Full Scale (16-bit)
+  volts *= 275; //Convert to mV (Differential Input Range is +/- 250mV)
+  volts /= 1000; //Convert to Volts
+  //Correct for the voltage divider: (RISO1 + RISO2 + RSENSE) / RSENSE
+  //Or:  (RISO1 + RISO2 + RISO3 + RISO4 + RSENSE) / RSENSE
+  float resistorMultiplier = (4001800) / 1800;
+  volts *= resistorMultiplier;
+  //*vRMS = volts;
+  //volts /= 32768.0;
+  //volts *= 517;
+  Serial.print(">volts:");
+  Serial.println(volts);
+  //Serial.println(volts);
+
   irms = (vrms_irms >> 16) & 0x7FFF;
-  Serial.print(">irms:");
-  Serial.println(irms);
+  //Serial.print(">irms:");
+  //Serial.println(irms);
+  auto i_rms=((float)irms)/16384;
+  i_rms=i_rms*(90);
+  Serial.print(">i_rms:");
+  Serial.println(i_rms);
+
+  /*
+  papparent = papparent & 0xFFFF;
+  auto p_rms = ((float)papparent)/32768;
+  p_rms = p_rms * 432 * 90;
+  Serial.print(">p_rms:");
+  Serial.println(p_rms);
+  */
+
+  pactive = pactive & 0x1FFFF;
+  auto f = ((pactive & 0x7FFF) / 32768.0);
+  f = f*432*90;
+  if (pactive & 0x10000)
+    f = -f;
+  //auto p_rms = ((float)pactive)/32768;
+  //p_rms = p_rms * 432 * 90;
+  Serial.print(">f:");
+  Serial.println(f);
+
+  /*
+  vrmsavgonesec = vrmsavgonesec_irmsavgonesec & 0x7FFF;
+  auto v_rms_avg = ((float)vrmsavgonesec)/32768;
+  v_rms_avg = v_rms_avg*(432);
+  Serial.print(">v_rms_avg:");
+  Serial.println(v_rms_avg);*/
+
+  irmsavgonesec = (vrmsavgonesec_irmsavgonesec >> 16) & 0x7FFF;
+  auto i_rms_avg = ((float)irmsavgonesec)/16384;
+  i_rms_avg=i_rms_avg*(90);
+  Serial.print(">i_rms_avg:");
+  Serial.println(i_rms_avg);
+
+  pactavgonesec = pactavgonesec & 0x1FFFF;
+  auto p_act_rms_avg = ((float)pactive)/32768;
+  //p_act_rms_avg = p_act_rms_avg * 432 * 90;
+  Serial.print(">p_act_rms_avg:");
+  Serial.println(pactavgonesec);
+
+  /*
+  union
+  {
+    int16_t Signed;
+    uint16_t unSigned;
+  } signedUnsigned;
+  signedUnsigned.unSigned = irms; //Extract irms as signed int
+  float amps = (float)signedUnsigned.Signed;
+  amps /= 16384.0; //Convert from codes to the fraction of ADC Full Scale (16-bit)
+  amps *= 90; //Convert to Amps
+  Serial.println(amps);
+
+  pactive = pactive & 0x1FFFF;
+  Serial.print(">pactive:");
+  Serial.println(pactive);
+  paparent = paparent & 0xFFFF;
+  Serial.print(">paparent:");
+  Serial.println(paparent);
+  */
   /*
   Serial.printf("vrms = %ul\n", vrms);
   irms = (vrms_irms >> 16) & 0x7FFF;
@@ -277,13 +380,17 @@ void loop()
   irmsavgonesec = (vrmsavgonesec_irmsavgonesec >> 16) & 0x7FFF;
   Serial.printf("irmsavgonesec = %ul\n", irmsavgonesec);
   */
+ /*
   vrmsavgonesec = vrmsavgonesec_irmsavgonesec & 0x7FFF;
   Serial.print(">vrmsavgonesec:");
   Serial.println(vrmsavgonesec);
   irmsavgonesec = (vrmsavgonesec_irmsavgonesec >> 16) & 0x7FFF;
   Serial.print(">irmsavgonesec:");
   Serial.println(irmsavgonesec);
-
+  pactavgonesec = pactavgonesec & 0x1FFFF;
+  Serial.print(">pactavgonesec:");
+  Serial.println(pactavgonesec);
+  */
   /*
   vrmsavgonemin = vrmsavgonemin_irmsavgonemin & 0x7FFF;
   Serial.print(">vrmsavgonemin:");
@@ -344,5 +451,5 @@ void loop()
   */
   //Serial.print(">vzerocrossout:");
   //Serial.println((flags >> 0) & 0x1);
-  delay(5); // wait 5 seconds for next scan
+  delay(10); // wait 5 seconds for next scan
 }

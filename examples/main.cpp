@@ -14,17 +14,7 @@
 #define kREADERROR 1
 #define kWRITEERROR 2
 
-const uint32_t WRITE = 0x00;
-const uint32_t READ = 0x80;
-const uint32_t COMMAND_MASK = 0x80;
-const uint32_t ADDRESS_MASK = 0x7F;
-
-unsigned long nextTime;
-
-uint32_t default0B = 0b1000010001000000001110;
-
 ACS71020 mySensor;
-
 byte acs_address;
 
 uint16_t Read(uint8_t address, uint32_t &value)
@@ -36,10 +26,10 @@ uint16_t Read(uint8_t address, uint32_t &value)
   if (results == kNOERROR)
   {
     Wire.requestFrom(acs_address, 4u);
-    value = Wire.read(); // receive a byte as character
-    value |= Wire.read() << 8; // receive a byte as character
-    value |= Wire.read() << 16; // receive a byte as character
-    value |= Wire.read() << 24; // receive a byte as character
+    value = Wire.read();
+    value |= Wire.read() << 8;
+    value |= Wire.read() << 16;
+    value |= Wire.read() << 24;
   }
   else
   {
@@ -52,7 +42,6 @@ uint16_t Write(uint8_t address, uint32_t value)
 {
   uint16_t results = kNOERROR;
   Wire.beginTransmission(acs_address);
-  // Send the address then the value (least significant byte first)
   Wire.write(address);
   Wire.write(value);
   Wire.write(value >> 8);
@@ -60,37 +49,29 @@ uint16_t Write(uint8_t address, uint32_t value)
   Wire.write(value >> 24);
   results = Wire.endTransmission();
 
-  if (address < 0x10)
-  {
-    delay(30); // If writing to EEPROM delay 30 ms
-  }
   return results;
 }
 
 void updateRegister0B(int qvo_fine, int sns_fine) {
-    // Calculate two's complement for qvo_fine if it's negative
     if (qvo_fine < 0) {
-        qvo_fine = ((~(-qvo_fine) + 1) & 0x1FF); // 9-bit two's complement
+        qvo_fine = ((~(-qvo_fine) + 1) & 0x1FF);
     } else {
-        qvo_fine &= 0x1FF; // Ensure qvo_fine is only 9 bits
+        qvo_fine &= 0x1FF;
     }
 
     if (sns_fine < 0) {
-        sns_fine = ((~(-sns_fine) + 1) & 0x1FF); // 9-bit two's complement
+        sns_fine = ((~(-sns_fine) + 1) & 0x1FF);
     } else {
-        sns_fine &= 0x1FF; // Ensure qvo_fine is only 9 bits
+        sns_fine &= 0x1FF;
     }
 
-    // Extracting unchanged parts from the original register value
-    // Assuming original register value is 0b1000010001000000001110 = 0x084007E
     uint32_t actual = 0;
     mySensor.readRegister(REGISTER_SHADOW_1B, actual);
-    uint32_t crs_sns = (actual >> 18) & 0x7;      // Bits 20:18
-    uint32_t iavgselen = (actual >> 21) & 0x1;    // Bit 21
-    uint32_t unused = (actual >> 22) & 0xF;       // Bits 25:22
-    uint32_t ecc = (actual >> 26) & 0x3F;         // Bits 31:26
+    uint32_t crs_sns = (actual >> 18) & 0x7;
+    uint32_t iavgselen = (actual >> 21) & 0x1;
+    uint32_t unused = (actual >> 22) & 0xF;
+    uint32_t ecc = (actual >> 26) & 0x3F;
 
-    // Constructing the new register value
     uint32_t newRegister = 0;
     newRegister |= (ecc << 26);
     newRegister |= (unused << 22);
@@ -106,28 +87,24 @@ void updateRegister0B(int qvo_fine, int sns_fine) {
 }
 
 void updateRegister0D(int pacc_trim) {
-    // Calculate two's complement for pacc_trim if it's negative
     if (pacc_trim < 0) {
-        pacc_trim = ((~(-pacc_trim) + 1) & 0x7F); // 7-bit two's complement
+        pacc_trim = ((~(-pacc_trim) + 1) & 0x7F);
     } else {
-        pacc_trim &= 0x7F; // Ensure pacc_trim is only 7 bits
+        pacc_trim &= 0x7F;
     }
 
-    // Extracting unchanged parts from the original register value
-    // Assuming original register value is 0x3FFFFFF = 67108863
     uint32_t actual = 0;
     mySensor.readRegister(REGISTER_SHADOW_1D, actual);
-    uint32_t ichan_del_en = (actual >> 7) & 0x1;       // Bit 7
-    uint32_t unused1 = (actual >> 8) & 0x1;            // Bit 8
-    uint32_t chan_del_sel = (actual >> 9) & 0x7;       // Bits 11:9
-    uint32_t unused2 = (actual >> 12) & 0x1;           // Bit 12
-    uint32_t fault = (actual >> 13) & 0xFF;            // Bits 20:13
-    uint32_t fltdly = (actual >> 21) & 0x7;            // Bits 23:21
-    uint32_t halfcycle_en = (actual >> 24) & 0x1;      // Bit 24
-    uint32_t squarewave_en = (actual >> 25) & 0x1;     // Bit 25
-    uint32_t ecc = (actual >> 26) & 0x3F;              // Bits 31:26
+    uint32_t ichan_del_en = (actual >> 7) & 0x1;
+    uint32_t unused1 = (actual >> 8) & 0x1;
+    uint32_t chan_del_sel = (actual >> 9) & 0x7;
+    uint32_t unused2 = (actual >> 12) & 0x1;
+    uint32_t fault = (actual >> 13) & 0xFF;
+    uint32_t fltdly = (actual >> 21) & 0x7;
+    uint32_t halfcycle_en = (actual >> 24) & 0x1;
+    uint32_t squarewave_en = (actual >> 25) & 0x1;
+    uint32_t ecc = (actual >> 26) & 0x3F;
 
-    // Constructing the new register value
     uint32_t newRegister = 0;
     newRegister |= (ecc << 26);
     newRegister |= (squarewave_en << 25);
@@ -138,7 +115,7 @@ void updateRegister0D(int pacc_trim) {
     newRegister |= (chan_del_sel << 9);
     newRegister |= (unused1 << 8);
     newRegister |= (ichan_del_en << 7);
-    newRegister |= pacc_trim; // Set pacc_trim at bits 6:0
+    newRegister |= pacc_trim;
 
     Serial.print("0x0D - ");
     Serial.println(newRegister, HEX);
@@ -149,19 +126,13 @@ void updateRegister0D(int pacc_trim) {
 void setup()
 {
   Serial.begin(115200);
-  // Initialize serial
-  // Turn on the pullup so the determination of communication protocol can be made.
-  // pinMode(ProtocolSelectPin, INPUT_PULLUP);
-  // delay(50); // Wait for the pullup to take affect
-  // UseI2C = (digitalRead(ProtocolSelectPin) == HIGH);
-  //  Initialize I2C
+
   Wire.begin();
   Wire.setClock(400000);
 
   while (!Serial)
     ;
   Serial.println("Using I2C version of ACS71020");
-  nextTime = millis();
 
   byte error;
   int nDevices;
@@ -171,9 +142,6 @@ void setup()
   nDevices = 0;
   for (acs_address = 1; acs_address < 127; acs_address++)
   {
-    // The i2c_scanner uses the return value of
-    // the Write.endTransmisstion to see if
-    // a device did acknowledge to the address.
     Wire.beginTransmission(acs_address);
     error = Wire.endTransmission();
 
@@ -202,35 +170,15 @@ void setup()
     Serial.println("done\n");
 
   mySensor.begin(acs_address, Wire);
+  /*
   mySensor.unlock();
-  //Write(0x2F, 0x4F70656E); // Unlock device
-  //Write(0x30, 0x00000001);
-  // If the Arduino has built in USB, keep the next line
-  // in to wait for the Serial to initialize
-
-  //Write(0x1B, 0x11E0F); //Default
-  //mySensor.writeRegister(REGISTER_SHADOW_1B, 0x211E0F);
-  //Write(0x1B, 0x211E0F);
-  //            -|--|--------|
-  //mySensor.writeRegister(REGISTER_EPROM_0B, 0x22EC0F);
-  delay(100);
-  //Write(0x1B, 0b1000010001000000001110);
-  //Write(0x1B, 0x211E0F);
-  //Write(0x1B, 0x13219);
-  //delay(100);
-  //mySensor.writeRegister(REGISTER_SHADOW_1C, 0x1F40040);
-  //Write(0x1C, 0x1F40040);
-  //Write(0x1C, 0b00000000000000000000000001000000);
-  //mySensor.writeRegister(REGISTER_EPROM_0C, 0x1F40040);
-  delay(100);
-  //Write(0x1C, 0b10000000001000000);
-  //delay(100);
-
-  // Write 0x1D Default 3FFFFFF
-  //mySensor.writeRegister(REGISTER_EPROM_0D, 0x3FFFF81);
-  delay(100);
-  //Write(0x1D, 0x3FFFFFF);
-  //delay(100);
+  mySensor.writeRegister(REGISTER_SHADOW_1B, 0x22EC0F);
+  delay(10);
+  mySensor.writeRegister(REGISTER_SHADOW_1C, 0x1F40040);
+  delay(10);
+  mySensor.writeRegister(REGISTER_SHADOW_1D, 0x3FFFF81);
+  delay(10);
+  */
 
   uint32_t tuning;
   uint32_t crs_sns;
@@ -257,7 +205,6 @@ void setup()
   Serial.println(tuning, HEX);
   int qvo_fine = tuning & 0x1FF;
   if (qvo_fine & 0x100) {
-    // Convert from two's complement to integer
     qvo_fine = -(qvo_fine & 0xFF);
   } else {
     qvo_fine = qvo_fine & 0xFF;
@@ -266,7 +213,6 @@ void setup()
   Serial.println(qvo_fine);
   int sns_fine = (tuning >> 9) & 0x1FF;
   if (sns_fine & 0x100) {
-    // Convert from two's complement to integer
     sns_fine = -(sns_fine & 0xFF);
   } else {
     sns_fine = sns_fine & 0xFF;
@@ -334,6 +280,10 @@ void setup()
 void loop()
 {
   /*
+  // Use thie code with 10kohms potentiometers to see changes real time for:
+  // - qvo_fine
+  // - sns_fine
+  // - pacc_trim
   int analog36 = analogRead(36);
   int qvo_fine = map(analog36, 0, 4095, -256, 255);
   int analog39 = analogRead(39);
@@ -421,5 +371,5 @@ void loop()
   Serial.print(">power_factor:");
   Serial.println(power_factor);
   
-  delay(10); // wait 5 seconds for next scan
+  delay(10);
 }

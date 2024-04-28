@@ -1,5 +1,3 @@
-001000101100100000001110
-
 # ACS71020
 This library is heavily inspired from [SparkFun_ACS37800_Power_Monitor_Arduino_Library](https://github.com/sparkfun/SparkFun_ACS37800_Power_Monitor_Arduino_Library/tree/main)
 

@@ -15,7 +15,7 @@
 #define kWRITEERROR 2
 
 ACS71020 mySensor;
-byte acs_address;
+byte acs_address = 0x68;
 
 uint16_t Read(uint8_t address, uint32_t &value)
 {
@@ -133,7 +133,7 @@ void setup()
   while (!Serial)
     ;
   Serial.println("Using I2C version of ACS71020");
-
+                      
   byte error;
   int nDevices;
 
@@ -170,15 +170,15 @@ void setup()
     Serial.println("done\n");
 
   mySensor.begin(acs_address, Wire);
-  /*
   mySensor.unlock();
-  mySensor.writeRegister(REGISTER_SHADOW_1B, 0x22EC0F);
-  delay(10);
-  mySensor.writeRegister(REGISTER_SHADOW_1C, 0x1F40040);
-  delay(10);
-  mySensor.writeRegister(REGISTER_SHADOW_1D, 0x3FFFF81);
-  delay(10);
-  */
+  delay(100);
+  //mySensor.setI2Caddress(0x76);
+  mySensor.writeRegister(0x1B, 0x212A0E);
+  delay(100);
+  mySensor.writeRegister(0x1C, 0x1F40040);
+  delay(100);
+  mySensor.writeRegister(0x1D, 0x3FFFF80);
+  delay(100);
 
   uint32_t tuning;
   uint32_t crs_sns;
@@ -200,7 +200,7 @@ void setup()
   uint32_t overvreg;
   uint32_t undervreg;
   uint32_t delaycnt_sel;
-  mySensor.readRegister(0x0B, tuning);
+  mySensor.readRegister(0x1B, tuning);
   Serial.print("Ox1B - ");
   Serial.println(tuning, HEX);
   int qvo_fine = tuning & 0x1FF;
@@ -225,7 +225,7 @@ void setup()
   iavgselen = (tuning >> 21) & 0x1;
   Serial.print("iavgselen: ");
   Serial.println(iavgselen);
-  mySensor.readRegister(0x0C, average);
+  mySensor.readRegister(0x1C, average);
   Serial.print("Ox1C - ");
   Serial.println(average, HEX);
   rms_avg_1 = average & 0x7F;
@@ -234,7 +234,7 @@ void setup()
   rms_avg_2 = (average >> 7) & 0x3FF;
   Serial.print("rms_avg_2: ");
   Serial.println(rms_avg_2);
-  mySensor.readRegister(0x0D, trim);
+  mySensor.readRegister(0x1D, trim);
   Serial.print("Ox1D - ");
   Serial.println(trim, HEX);
   Serial.println(trim, HEX);
@@ -279,7 +279,6 @@ void setup()
 
 void loop()
 {
-  /*
   // Use thie code with 10kohms potentiometers to see changes real time for:
   // - qvo_fine
   // - sns_fine
@@ -300,13 +299,12 @@ void loop()
   int pacc_trim = map(analog34, 0, 4095, -64, 63);
   updateRegister0D(pacc_trim);
 
-  //Serial.print(">qvo_fine:");
-  //Serial.println(qvo_fine);
-  //Serial.print(">sns_fine:");
-  //Serial.println(sns_fine);
+  Serial.print(">qvo_fine:");
+  Serial.println(qvo_fine);
+  Serial.print(">sns_fine:");
+  Serial.println(sns_fine);
   Serial.print(">pacc_trim:");
   Serial.println(pacc_trim);
-  */
 
   uint32_t vrms_irms;
   uint32_t vrms;

@@ -23,10 +23,10 @@ ACS71020ERR ACS71020::readRegister(uint8_t address, uint32_t &data) {
   if (toRead != 4)
     return (ERR_I2C_ERROR);  
 
-  data = Wire.read();
-  data |= Wire.read() << 8;
-  data |= Wire.read() << 16;
-  data |= Wire.read() << 24;
+  data = _i2cPort->read();
+  data |= _i2cPort->read() << 8;
+  data |= _i2cPort->read() << 16;
+  data |= _i2cPort->read() << 24;
 
   return SUCCESS;
 }
@@ -35,16 +35,53 @@ ACS71020ERR ACS71020::writeRegister(uint8_t address, uint32_t data) {
   _i2cPort->beginTransmission(_i2cAddress);
   _i2cPort->write(address);
 
-  Wire.write(data);
-  Wire.write(data >> 8);
-  Wire.write(data >> 16);
-  Wire.write(data >> 24);
+  _i2cPort->write(data);
+  _i2cPort->write(data >> 8);
+  _i2cPort->write(data >> 16);
+  _i2cPort->write(data >> 24);
   uint8_t i2cResult = _i2cPort->endTransmission();
 
   if (i2cResult != 0)
     return (ERR_I2C_ERROR);
 
   return SUCCESS;
+}
+
+//Change the I2C address
+ACS71020ERR ACS71020::setI2Caddress(uint8_t newAddress)
+{
+  REGISTER_0F_t store;
+  uint32_t tuning;
+  delay(100);
+  ACS71020ERR error = readRegister(REGISTER_EPROM_0F, tuning); // Read register 0F
+
+  if (error != SUCCESS) {
+    Serial.println("ERROR");
+    return error;
+  }
+
+  store.data.bits.i2c_slv_addr = newAddress & 0x7F; //Update the address
+  store.data.bits.i2c_dis_slv_addr = 1; //Disable setting the address via the DIO pins
+
+  error = writeRegister(store.data.all, REGISTER_EPROM_0F); // Write register 0F
+
+  if (error != SUCCESS)
+    return error;
+
+  delay(10); // Allow time for the shadow/eeprom memory to be updated - otherwise the next readRegister will return zero...
+
+  // Verify that the address was written correctly
+  error = readRegister(REGISTER_EPROM_0F, store.data.all); // Read register 0F
+
+  if (error != SUCCESS)
+    return error;
+
+  if ((store.data.bits.i2c_slv_addr == newAddress) && (store.data.bits.ECC == EEPROM_ECC_NO_ERROR))
+    return SUCCESS;
+  else
+    return (ERR_REGISTER_READ_MODIFY_WRITE_FAILURE);
+
+  return (error);
 }
 
 ACS71020ERR ACS71020::readRMS(float &voltage, float &current) {

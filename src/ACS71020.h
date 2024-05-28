@@ -17,11 +17,13 @@ const float DEFAULT_CURRENT_RANGE = 90;
 const uint8_t REGISTER_EPROM_0B = 0x0B;
 const uint8_t REGISTER_EPROM_0C = 0x0C;
 const uint8_t REGISTER_EPROM_0D = 0x0D;
+const uint8_t REGISTER_EPROM_0F = 0x0F;
 
 //Shadow Registers
 const uint8_t REGISTER_SHADOW_1B = 0x1B;
 const uint8_t REGISTER_SHADOW_1C = 0x1C;
 const uint8_t REGISTER_SHADOW_1D = 0x1D;
+const uint8_t REGISTER_SHADOW_1F = 0x1F;
 
 //Volatile Registers
 const uint8_t REGISTER_VOLATILE_20 = 0x20;
@@ -46,6 +48,14 @@ typedef enum {
   ERR_I2C_ERROR,
   ERR_REGISTER_READ_MODIFY_WRITE_FAILURE
 } ACS71020ERR;
+
+typedef enum
+{
+  EEPROM_ECC_NO_ERROR = 0,
+  EEPROM_ECC_ERROR_CORRECTED,
+  EEPROM_ECC_ERROR_UNCORRECTABLE,
+  EEPROM_ECC_NO_MEANING
+} EEPROM_ECC_e; //EEPROM ECC Errors
 
 // Registers 0B and 1B have the same bitmap except for ecc
 typedef struct
@@ -101,6 +111,25 @@ typedef struct
     } bits;
   } data;
 } REGISTER_0D_t;
+
+typedef struct
+{
+  union
+  {
+    uint32_t all;
+    struct
+    {
+      uint32_t reserved1 : 2;
+      uint32_t i2c_slv_addr : 7;
+      uint32_t i2c_dis_slv_addr : 1;
+      uint32_t reserved2 : 6;
+      uint32_t dio_0_sel : 2;
+      uint32_t dio_1_sel : 2;
+      uint32_t reserved3 : 6;
+      uint32_t ECC : 6;
+    } bits;
+  } data;
+} REGISTER_0F_t;
 
 typedef struct
 {
@@ -201,6 +230,7 @@ class ACS71020 {
     ACS71020ERR unlock();
     ACS71020ERR readRegister(uint8_t address, uint32_t &data);
     ACS71020ERR writeRegister(uint8_t address, uint32_t data);
+    ACS71020ERR setI2Caddress(uint8_t newAddress);
     ACS71020ERR readRMS(float &voltage, float &current);
     ACS71020ERR readRMSAvgSec(float &voltage_avg_sec, float &current_avg_sec);
     ACS71020ERR readPowerActive(float &pActive);

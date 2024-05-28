@@ -1,0 +1,22 @@
+{
+  "name": "ACS71020",
+  "version": "0.1.0",
+  "description": "The \"ACS71020\" is a sensor from Allegro to measure current voltage and power",
+  "keywords": "multimeter, hall, ACS71020",
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/SergioArrighi/ACS71020.git"
+  },
+  "authors":
+  [
+    {
+      "name": "Sergio Arrighi",
+      "url": "https://www.sarrighi.info",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "frameworks": "Arduino",
+  "platforms": "*"
+}

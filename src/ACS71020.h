@@ -1,7 +1,7 @@
 #ifndef ACS71020_h
 #define ACS71020_h
 
-#include "Arduino.h"
+#include <Arduino.h>
 #include <Wire.h>
 
 const uint8_t DEFAULT_I2C_ADDRESS = 0x60;

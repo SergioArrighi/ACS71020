@@ -23,10 +23,10 @@ ACS71020ERR ACS71020::readRegister(uint8_t address, uint32_t &data) {
   if (toRead != 4)
     return (ERR_I2C_ERROR);  
 
-  data = Wire.read();
-  data |= Wire.read() << 8;
-  data |= Wire.read() << 16;
-  data |= Wire.read() << 24;
+  data = _i2cPort->read();
+  data |= _i2cPort->read() << 8;
+  data |= _i2cPort->read() << 16;
+  data |= _i2cPort->read() << 24;
 
   return SUCCESS;
 }
@@ -35,10 +35,10 @@ ACS71020ERR ACS71020::writeRegister(uint8_t address, uint32_t data) {
   _i2cPort->beginTransmission(_i2cAddress);
   _i2cPort->write(address);
 
-  Wire.write(data);
-  Wire.write(data >> 8);
-  Wire.write(data >> 16);
-  Wire.write(data >> 24);
+  _i2cPort->write(data);
+  _i2cPort->write(data >> 8);
+  _i2cPort->write(data >> 16);
+  _i2cPort->write(data >> 24);
   uint8_t i2cResult = _i2cPort->endTransmission();
 
   if (i2cResult != 0)

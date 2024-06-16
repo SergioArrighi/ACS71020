@@ -1,6 +1,6 @@
 {
   "name": "ACS71020",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "The \"ACS71020\" is a sensor from Allegro to measure current voltage and power",
   "keywords": "multimeter, hall, ACS71020",
   "repository":
